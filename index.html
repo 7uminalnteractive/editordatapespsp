@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editor de jogadores PES 14 PSP</title>
+<style>
+:root{--bg:#f2f5f3;--card:#fff;--ink:#14231b;--mute:#5a6b61;--line:#c3d1c8;--pitch:#1b5e3b;--onp:#fff;--bad:#b3261e;color-scheme:light}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1913;--card:#17251d;--ink:#e6efe9;--mute:#98aa9f;--line:#2c4034;--pitch:#4fae7b;--onp:#08130d;--bad:#ff8a80;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,sans-serif;padding-bottom:84px}
+header{padding:20px 16px 14px;border-bottom:2px solid var(--line);background:linear-gradient(90deg,transparent calc(50% - 1px),var(--line) 0 calc(50% + 1px),transparent 0)}
+h1{margin:0;font-size:1.25rem;font-weight:700;letter-spacing:-.01em;background:var(--bg);display:inline-block;padding:0 8px 0 0}
+#st{margin:6px 0 0;color:var(--mute);font-size:.9rem;background:var(--bg);display:inline-block;padding-right:8px}
+main{max-width:640px;margin:0 auto;padding:14px 16px}
+button,input,select{font:inherit;color:inherit}
+.btn{background:var(--pitch);color:var(--onp);border:0;border-radius:8px;padding:12px 16px;font-weight:600;cursor:pointer}
+.btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn:disabled{opacity:.45;cursor:default}
+:focus-visible{outline:3px solid var(--pitch);outline-offset:2px}
+input,select{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:8px;background:var(--card)}
+label{display:block;font-size:.85rem;color:var(--mute);margin:12px 0 4px}
+#list{margin:12px 0 0;padding:0;list-style:none}
+#list button{width:100%;text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
+#list b{display:block}#list span{color:var(--mute);font-size:.85rem}
+#list .ed{border-color:var(--pitch)}
+#form{background:var(--card);border:2px solid var(--pitch);border-radius:10px;padding:4px 14px 16px;margin-top:14px}
+#form h2{font-size:1.05rem;margin:12px 0 0}
+.g{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.row{display:flex;gap:10px;margin-top:16px}.row .btn{flex:1}
+#msg{color:var(--bad);min-height:1.3em;margin:8px 0 0;font-size:.9rem}
+#bar{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card);border-top:2px solid var(--line)}
+#bar span{flex:1;color:var(--mute);font-size:.9rem}
+[hidden]{display:none!important}
+#tm{margin-top:24px;border-top:2px solid var(--line)}
+.tr{background:var(--card);border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:8px}
+.tr label{display:flex;gap:8px;align-items:center;margin:0 0 6px;color:var(--ink)}
+.tr input{width:auto}#tmmsg{color:var(--mute);margin:8px 0 0;font-size:.9rem}
+</style></head><body>
+<header><h1>Editor de jogadores</h1><p id="st">Abra o DATA.BIN do seu save para começar.</p></header>
+<main>
+<input type="file" id="file" hidden>
+<button class="btn" id="open">Abrir DATA.BIN</button>
+<div id="work" hidden>
+<label for="q">Buscar jogador (nome ou nome da camisa)</label>
+<input id="q" type="search" autocomplete="off" placeholder="Ex.: Messi">
+<ul id="list"></ul>
+<form id="form" hidden>
+<h2 id="ft"></h2>
+<label for="fn">Nome completo (até 15 letras)</label><input id="fn" maxlength="15">
+<label for="fs">Nome da camisa (até 15, sem acento)</label><input id="fs" maxlength="15">
+<label for="fp">Posição principal</label><select id="fp"></select>
+<label for="fc">Nacionalidade</label><select id="fc"></select>
+<label for="ff">Perna preferida</label><select id="ff"><option value="0">Direita</option><option value="1">Esquerda</option></select>
+<div class="g">
+<div><label for="fa">Idade</label><input id="fa" type="number" inputmode="numeric" min="15" max="46"></div>
+<div><label for="fh">Altura (cm)</label><input id="fh" type="number" inputmode="numeric" min="148" max="220"></div>
+<div><label for="fw">Peso (kg)</label><input id="fw" type="number" inputmode="numeric" min="40" max="127"></div>
+</div>
+<p id="msg" role="alert"></p>
+<div class="row"><button class="btn" type="submit">Aplicar ao jogador</button><button class="btn alt" type="button" id="cx">Cancelar</button></div>
+</form>
+<section id="tm"><h2>Importar do Transfermarkt</h2>
+<label for="tms">Time</label><select id="tms"></select>
+<label for="tmu">ou cole a URL do clube</label><input id="tmu" placeholder="https://www.transfermarkt.com.br/.../verein/614">
+<div class="row"><button class="btn alt" type="button" id="tmgo">Carregar elenco</button></div>
+<p id="tmmsg"></p><div id="tmres"></div>
+<div class="row" id="tmap" hidden><button class="btn" type="button" id="tmapply">Aplicar marcados</button></div></section>
+</div>
+</main>
+<div id="bar"><span id="cnt">Nenhuma alteração ainda.</span><button class="btn" id="save" disabled>Salvar arquivo</button></div>
+<script>
+const S=124,BASE=37808,N=4871,C=[[0, "Austria"], [1, "Belgium"], [2, "Bulgaria"], [3, "Croatia"], [4, "Czech Republic"], [5, "Denmark"], [6, "England"], [7, "Finland"], [8, "France"], [9, "Germany"], [10, "Greece"], [11, "Hungary"], [12, "Ireland"], [13, "Israel"], [14, "Italy"], [15, "Netherlands"], [16, "Northern Ireland"], [17, "Norway"], [18, "Poland"], [19, "Portugal"], [20, "Romania"], [21, "Russia"], [22, "Scotland"], [23, "Serbia"], [24, "Slovakia"], [25, "Slovenia"], [26, "Spain"], [27, "Sweden"], [28, "Switzerland"], [29, "Turkey"], [30, "Ukraine"], [31, "Wales"], [32, "Algeria"], [33, "Cameroon"], [34, "Cote d'Ivoire"], [35, "Egypt"], [36, "Ghana"], [37, "Nigeria"], [38, "South Africa"], [39, "Zambia"], [40, "Costa Rica"], [41, "Honduras"], [42, "Mexico"], [43, "United States"], [44, "Argentina"], [45, "Brazil"], [46, "Chile"], [47, "Colombia"], [48, "Ecuador"], [49, "Paraguay"], [50, "Peru"], [51, "Uruguay"], [52, "Australia"], [53, "China"], [54, "Japan"], [55, "North Korea"], [56, "Saudi Arabia"], [57, "South Korea"], [58, "UEA"], [59, "New Zealand"], [60, "Kosovo"], [61, "Angola"], [62, "Benin"], [63, "Burundi"], [64, "Cape Verde"], [65, "Central African"], [66, "The Comoros"], [67, "Congo"], [68, "Congo DR"], [69, "Equatorial Guinea"], [70, "Gabon"], [71, "Guinea Bissau"], [72, "Kenya"], [73, "Liberia"], [74, "Libya"], [75, "Madagascar"], [76, "Mouiratine"], [77, "Mozambique"], [78, "Niger"], [79, "Gambia"], [80, "Rwanda"], [81, "Sierra Leone"], [82, "Togo"], [83, "Zambia (2)"], [84, "Antigua"], [85, "Aruba"], [86, "Barbade"], [87, "Canada"], [88, "Curacao"], [89, "Dominican Republic"], [90, "Grenade"], [91, "Guadeloupe"], [92, "Guatemala"], [93, "Haiti"], [94, "Martinique"], [95, "Trinidad-Tobago"], [96, "Bahrain"], [97, "Philippines"], [98, "Syria"], [99, "New Caledonia"], [103, "Albania"], [104, "Andorra"], [105, "Armenia"], [106, "Azerbaijan"], [107, "Belarus"], [108, "Bosnia-Herzegovina"], [109, "Cyprus"], [110, "Estonia"], [111, "Faroe Island"], [112, "Georgia"], [113, "Iceland"], [114, "Kazakhstan"], [115, "Letoine"], [116, "Liechenstein"], [117, "Lithuania"], [118, "Luxembourg"], [119, "North Macedonia"], [120, "Malte"], [121, "Moldova"], [122, "Montenegro"], [123, "San Marino"], [124, "Burkina Faso"], [125, "Guinea"], [126, "Mali"], [127, "Morocco"], [128, "Senegal"], [129, "Tunisia"], [130, "Jamaica"], [131, "Panama"], [132, "Bolivia"], [133, "Venezuela"], [134, "Iran"], [135, "Iraq"], [136, "Jordan"], [137, "Kuwait"], [138, "Lebanon"], [139, "Oman"], [140, "Qatar"], [141, "Thailand"], [142, "Uzbekistan"]];
+const CN=Object.fromEntries(C);
+const POS={0:'Goleiro',2:'Líbero',3:'Zagueiro',4:'Lateral',5:'Volante',6:'Ala',7:'Meia central',8:'Meia lateral',9:'Meia ofensivo',10:'Ponta',11:'Segundo atacante',12:'Centroavante'};
+let buf,dv,P=[],ed=new Set(),sel=-1;
+const $=i=>document.getElementById(i);
+const nz=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+$('fp').innerHTML=Object.entries(POS).map(([v,n])=>'<option value="'+v+'">'+n+'</option>').join('');
+$('fc').innerHTML=C.map(([c,n])=>'<option value="'+c+'">'+n+'</option>').join('');
+function rd(i){const o=BASE+i*S;let n='',s='';
+for(let k=0;k<16;k++){const c=dv.getUint16(o+k*2,true);if(!c)break;n+=String.fromCharCode(c)}
+for(let k=0;k<16;k++){const c=dv.getUint8(o+32+k);if(!c)break;s+=String.fromCharCode(c)}
+return{i,o,n,s,k:nz(n+' '+s),c:dv.getUint8(o+112),p:dv.getUint8(o+53)>>4,f:dv.getUint8(o+87)&1,a:((dv.getUint8(o+113)>>1)&31)+15,h:dv.getUint8(o+88)+148,w:dv.getUint8(o+89)&127}}
+$('open').onclick=()=>$('file').click();
+$('file').onchange=async e=>{const f=e.target.files[0];if(!f)return;
+const b=await f.arrayBuffer();
+if(b.byteLength<BASE+N*S){$('st').textContent='Arquivo menor que o esperado ('+b.byteLength+' bytes). Use o DATA.BIN do PES 14 PSP.';return}
+buf=b;dv=new DataView(buf);P=Array.from({length:N},(_,i)=>rd(i));ed.clear();sel=-1;
+$('form').hidden=true;$('work').hidden=false;$('st').textContent=f.name+' aberto: '+N+' jogadores.';cnt();list()};
+function list(){const q=nz($('q').value.trim());
+const r=(q?P.filter(p=>p.k.includes(q)):P).slice(0,40);
+$('list').innerHTML=r.map(p=>'<li><button data-i="'+p.i+'"'+(ed.has(p.i)?' class="ed"':'')+'><b>'+esc(p.n)+'</b><span>'+esc(p.s)+', '+(POS[p.p]||'posição '+p.p)+', '+(p.f?'perna esquerda, ':'')+(CN[p.c]||'?')+', '+p.a+' anos, '+p.h+' cm, '+p.w+' kg</span></button></li>').join('')||'<li><span>Nenhum jogador encontrado.</span></li>'}
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+$('q').oninput=list;
+$('list').onclick=e=>{const b=e.target.closest('button');if(!b)return;sel=+b.dataset.i;const p=P[sel];
+$('ft').textContent='Editando '+p.n;$('fn').value=p.n;$('fs').value=p.s;if(!POS[p.p])$('fp').add(new Option('Posição '+p.p+' (desconhecida)',p.p));$('fp').value=p.p;$('ff').value=p.f;$('fc').value=p.c;$('fa').value=p.a;$('fh').value=p.h;$('fw').value=p.w;
+$('msg').textContent='';$('form').hidden=false;$('form').scrollIntoView({behavior:'smooth',block:'start'})};
+$('cx').onclick=()=>{$('form').hidden=true;sel=-1};
+$('fs').oninput=e=>{e.target.value=nz(e.target.value).toUpperCase().replace(/[^A-Z0-9 .'-]/g,'')};
+$('form').onsubmit=e=>{e.preventDefault();if(sel<0)return;
+const n=$('fn').value.trim(),s=$('fs').value.trim(),c=+$('fc').value,ps=+$('fp').value,f=+$('ff').value,a=+$('fa').value,h=+$('fh').value,w=+$('fw').value;
+const bad=!n?'Digite o nome completo.':!s?'Digite o nome da camisa.':!(a>=15&&a<=46)?'A idade deve ficar entre 15 e 46.':!(h>=148&&h<=220)?'A altura deve ficar entre 148 e 220 cm.':!(w>=40&&w<=127)?'O peso deve ficar entre 40 e 127 kg.':'';
+if(bad){$('msg').textContent=bad;return}
+const o=BASE+sel*S;
+for(let k=0;k<16;k++){dv.setUint16(o+k*2,k<n.length&&k<15?n.charCodeAt(k):0,true);dv.setUint8(o+32+k,k<s.length&&k<15?s.charCodeAt(k):0)}
+dv.setUint8(o+112,c);
+dv.setUint8(o+53,(ps<<4)|(dv.getUint8(o+53)&15));
+dv.setUint8(o+87,(dv.getUint8(o+87)&254)|f);dv.setUint8(o+52,(dv.getUint8(o+52)&254)|f);
+dv.setUint8(o+113,(dv.getUint8(o+113)&0xC1)|(((a-15)&31)<<1));
+dv.setUint8(o+88,h-148);
+dv.setUint8(o+89,(dv.getUint8(o+89)&0x80)|w);
+P[sel]=rd(sel);ed.add(sel);$('form').hidden=true;sel=-1;cnt();list()};
+function cnt(){const n=ed.size;$('cnt').textContent=n?n+(n>1?' jogadores alterados.':' jogador alterado.'):'Nenhuma alteração ainda.';$('save').disabled=!n}
+$('save').onclick=()=>{const u=URL.createObjectURL(new Blob([buf],{type:'application/octet-stream'}));
+const a=document.createElement('a');a.href=u;a.download='DATA_editado.BIN';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)};
+
+const NAT={"Brasil":45,"Argentina":44,"Uruguai":51,"Chile":46,"Colômbia":47,"Equador":48,"Paraguai":49,"Peru":50,"Bolívia":132,"Venezuela":133,"Portugal":19,"Espanha":26,"França":8,"Alemanha":9,"Itália":14,"Inglaterra":6,"Países Baixos":15,"Holanda":15,"Bélgica":1,"Croácia":3,"Suíça":28,"Áustria":0,"Dinamarca":5,"Suécia":27,"Noruega":17,"Polônia":18,"Ucrânia":30,"Rússia":21,"Sérvia":23,"Turquia":29,"Grécia":10,"Escócia":22,"País de Gales":31,"Irlanda":12,"Irlanda do Norte":16,"Estados Unidos":43,"México":42,"Canadá":87,"Costa Rica":40,"Honduras":41,"Panamá":131,"Jamaica":130,"Japão":54,"Coreia do Sul":57,"Austrália":52,"Marrocos":127,"Senegal":128,"Nigéria":37,"Gana":36,"Camarões":33,"Costa do Marfim":34,"Egito":35,"Argélia":32,"Tunísia":129,"África do Sul":38,"Mali":126,"Guiné":125,"Cabo Verde":64,"Angola":61,"Congo":67,"RD Congo":68,"Arábia Saudita":56,"Irã":134,"Hungria":11,"Finlândia":7,"Eslováquia":24,"Eslovênia":25,"República Tcheca":4,"Tchéquia":4,"Romênia":20,"Bulgária":2,"Bósnia-Herzegovina":108,"Islândia":113,"Geórgia":112,"Armênia":105,"Albânia":103,"Kosovo":60,"Macedônia do Norte":119,"Montenegro":122,"Israel":13,"Nova Zelândia":59,"China":53};
+const tms=$('tms');let TM=[],TR=[];
+fetch('data/teams.json').then(r=>r.json()).then(t=>{tms.innerHTML='<option value="">Escolha um time</option>'+t.map(x=>'<option value="'+x.tm_id+'">'+esc(x.name)+'</option>').join('')}).catch(()=>{});
+$('tmu').oninput=()=>{const m=$('tmu').value.match(/verein\/(\d+)/);if(m)tms.value=m[1]};
+$('tmgo').onclick=async()=>{const m=$('tmmsg'),u=($('tmu').value.match(/verein\/(\d+)/)||[])[1],id=tms.value||u;
+if(!id){m.textContent='Escolha um time ou cole a URL.';return}
+if(!P.length){m.textContent='Abra o DATA.BIN primeiro.';return}
+try{const r=await fetch('data/squads/'+id+'.json');if(!r.ok)throw 0;TM=(await r.json()).players}
+catch{m.textContent='Elenco '+id+' ainda não baixado. Adicione em data/teams.json e rode o workflow Atualizar elencos.';return}
+m.textContent=TM.length+' jogadores no Transfermarkt. Confira os pares antes de aplicar.';render()};
+function cand(t){const tok=nz(t.name).split(/[^a-z0-9]+/).filter(x=>x.length>2);if(!tok.length)return{l:[],auto:false};
+const r=[];for(const p of P){let s=0;for(const w of tok)if(p.k.includes(w))s++;if(s)r.push([s,p])}
+const top=Math.max(0,...r.map(x=>x[0])),l=r.filter(x=>x[0]===top).map(x=>x[1]);
+return{l:l.slice(0,8),auto:l.length===1&&top===tok.length}}
+function render(){TR=TM.map(t=>({t,c:cand(t)}));
+$('tmres').innerHTML=TR.map((x,i)=>{const t=x.t,nat=(t.nationality||[])[0];
+const info=[t.number?'nº '+esc(t.number):'',t.age?t.age+' anos':'',t.height_cm?t.height_cm+' cm':'',nat?esc(nat)+(NAT[nat]===undefined?' (sem tradução)':''):''].filter(Boolean).join(', ');
+return'<div class="tr"><label><input type="checkbox" data-i="'+i+'"'+(x.c.auto?' checked':'')+'><b>'+esc(t.name)+'</b></label><span style="color:var(--mute);font-size:.85rem">'+info+'</span><select data-s="'+i+'"><option value="">— sem correspondência —</option>'+x.c.l.map(p=>'<option value="'+p.i+'"'+(x.c.auto?' selected':'')+'>'+esc(p.n)+' ('+esc(p.s)+'), '+(CN[p.c]||'?')+', '+p.a+' anos</option>').join('')+'</select></div>'}).join('');
+$('tmap').hidden=!TR.length}
+$('tmapply').onclick=()=>{let n=0;
+document.querySelectorAll('#tmres input[type=checkbox]').forEach(cb=>{if(!cb.checked)return;const i=+cb.dataset.i,v=document.querySelector('[data-s="'+i+'"]').value;if(v==='')return;
+const t=TR[i].t,o=BASE+(+v)*S,nat=(t.nationality||[])[0];
+if(t.age>=15&&t.age<=46)dv.setUint8(o+113,(dv.getUint8(o+113)&0xC1)|(((t.age-15)&31)<<1));
+if(t.height_cm>=148&&t.height_cm<=220)dv.setUint8(o+88,t.height_cm-148);
+if(NAT[nat]!==undefined)dv.setUint8(o+112,NAT[nat]);
+P[+v]=rd(+v);ed.add(+v);n++});
+$('tmmsg').textContent=n+' jogadores atualizados (idade, altura e nacionalidade).';cnt();list()};
+</script></body></html>
